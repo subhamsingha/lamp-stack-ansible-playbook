@@ -1,0 +1,56 @@
+---
+ - name: Deploy web server
+   hosts: localhost
+   tasks:
+   - name: Install firewall
+     yum: name=firewalld state=latest
+   - name: start Firewalld
+     service: name=firewalld state=started enabled=yes
+   - name: Install MariaDB Packages
+     yum:
+      name:
+      - mariadb-server
+      - mariadb-devel
+      - MySQL-python
+      - php
+      - php-mysql
+      state: latest
+   - name: start MariaDB server
+     service: name=mariadb state=started
+   - name: configure firewall for database
+     firewalld:
+      port: 3306/tcp
+      permanent: true
+      state: enabled
+   - name: update MariaDB server
+     mysql_user:
+      name: root
+      host: localhost
+      password: mysql
+      login_user: root
+      login_password: mysql
+      check_implicit_admin: yes
+      priv: "*.*:ALL,GRANT"
+   - name: Create New Database
+     mysql_db: name=ecomdb state=present login_user=root login_password=mysql
+   - name: copy sql file
+     copy: src=/root/source/db-load-script.sql dest=/tmp/
+   - name: create table called products with data  or restore data into ecomdb
+     mysql_db: 
+      name: ecomdb
+      state: dump
+      target: /tmp/db-load-script.sql
+      login_user: root
+      login_password: mysql	
+   - name: copy php files
+     copy: src=/root/phpFiles/ dest=/var/www/html
+   - name: Install httpd
+     yum: name=httpd state=latest
+   - name: configure firewall for httpd
+     firewalld:
+      port: 80/tcp
+      permanent: true
+      state: enabled
+   - name: start httpd
+     service: name=httpd state=started
+
